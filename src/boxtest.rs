@@ -1,17 +1,17 @@
 
-trait Model<T> {
+pub trait Model<T> {
     fn generate_h(&self) -> Vec<T>;
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Units {
     Mom,
     Msf,
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Powerlaw {
     pub m: usize,
     pub sigma: f32,
@@ -21,24 +21,25 @@ pub struct Powerlaw {
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct WhiteNoise {
     m: usize,
     sigma: f32,
 }
 
-impl Model for White {
+impl Model<f32> for WhiteNoise {
 
     fn generate_h(&self) -> Vec<f32> {
     // Create impulse function for White noise.
         let mut h: Vec<f32> = vec![0.0; self.m];
-        h[0] = sigma
+        h[0] = 1.0; //self.sigma;
+        h
     }
 
 }
 
-impl Model for Powerlaw {
-    fn generate_h(&self) -> Result<PowerLawReturn, ModelError> {
+impl Model<f32> for Powerlaw {
+    fn generate_h(&self) -> Vec<f32> {
     let d = -self.kappa/2.0;
     // let gmsv = gauss_markov_scale_variance(sigma, d, units, dt).unwrap();
     let rpf = recursion_power_flicker_rw(self.m, d);
@@ -76,9 +77,14 @@ fn recursion_power_flicker_rw(m: usize, d: f32) -> Vec<f32> {
     h
 }
 
-fn get_model(m: str) -> Box<dyn Model> {
+pub fn get_model(m: &str) -> Box<dyn Model<f32>> {
     match m {
-        "white" => White {m: 10, sigma: 1}
-        "powerlaw" => Powerlaw {m: 10, sigma: 1, kappa: 0.5, dt: 1, units: Units::Mom }
+        "white" => Box::new( WhiteNoise {m: 10, sigma: 1.0} ),
+        "powerlaw" => Box::new( Powerlaw {m: 10, sigma: 1.0, kappa: 0.5, dt: 1.0, units: Units::Mom } ),
+        &_ => todo!()
     }
+}
+
+pub fn model_to_h<T>(ms: Vec<Box<dyn Model<T>>> ) -> Vec<Vec<T>> {
+    ms.into_iter().map(|m| m.generate_h()).collect()
 }
